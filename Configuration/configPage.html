@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Template</title>
+</head>
+<body>
+    <div id="TemplateConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="TemplateConfigForm">
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="Options">General Options</label>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="AString">Playlist Name</label>
+                            <input id="PlaylistName" name="AString" type="text" is="emby-input" />
+                            <div class="fieldDescription">The name your playlist should have</div>
+                        </div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="AnInteger">Playlist Duration</label>
+                        <input id="PlaylistDuration" name="AnInteger" type="number" is="emby-input" min="0" />
+                        <div class="fieldDescription">The duration the playlist should be in minutes</div>
+                    </div>
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var TemplateConfig = {
+                pluginUniqueId: '975dde10-724f-4b72-8efc-91a1cb2d9510'
+            };
+
+            document.querySelector('#TemplateConfigPage')
+                .addEventListener('pageshow', function() {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                        document.querySelector('#PlaylistName').value = config.PlaylistName;
+                        document.querySelector('#PlaylistDuration').value = config.PlaylistDuration;
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+            document.querySelector('#TemplateConfigForm')
+                .addEventListener('submit', function(e) {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                    config.PlaylistName = document.querySelector('#PlaylistName').value;
+                    config.PlaylistDuration = document.querySelector('#PlaylistDuration').value;
+                    ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+
+                e.preventDefault();
+                return false;
+            });
+        </script>
+    </div>
+</body>
+</html>
