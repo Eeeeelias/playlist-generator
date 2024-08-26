@@ -23,8 +23,8 @@
                         <div class="fieldDescription">The duration the playlist should be in minutes</div>
                     </div>
                     <div class="inputContainer">
-                        <label class="inputLabel inputLabelUnfocused" for="PlaylistUser">Playlist User</label>
-                        <input id="PlaylistUser" name="PlaylistUser" type="text" is="emby-input" />
+                        <label class="inputLabel inputLabelUnfocused" for="PlaylistUserName">Playlist User</label>
+                        <input id="PlaylistUserName" name="PlaylistUserName" type="text" is="emby-input" />
                         <div class="fieldDescription">The name of the user that wants the playlist</div>
                     </div>
                     <div>
@@ -46,7 +46,7 @@
                     ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
                         document.querySelector('#PlaylistName').value = config.PlaylistName;
                         document.querySelector('#PlaylistDuration').value = config.PlaylistDuration;
-                        document.querySelector('#PlaylistUser').value = config.PlaylistUser;
+                        document.querySelector('#PlaylistUserName').value = config.PlaylistUserName;
                         Dashboard.hideLoadingMsg();
                     });
                 });
@@ -57,7 +57,7 @@
                 ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
                     config.PlaylistName = document.querySelector('#PlaylistName').value;
                     config.PlaylistDuration = document.querySelector('#PlaylistDuration').value;
-                    config.PlaylistUser = document.querySelector('#PlaylistUser').value;
+                    config.PlaylistUserName = document.querySelector('#PlaylistUserName').value;
                     ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
                     });

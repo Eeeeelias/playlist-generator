@@ -11,7 +11,12 @@ using MediaBrowser.Model.Tasks;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Net;
+
+using Jellyfin.Data.Entities;
+
 using Jellyfin.Data.Enums;
+using Microsoft.Extensions.Configuration;
 
 namespace PlaylistGenerator;
 
@@ -47,18 +52,14 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 }
 
 
-public class PlaylistGenerationTask : IScheduledTask
+public class PlaylistGenerationTask(ILibraryManager libraryManager, IUserManager userManager, IUserDataManager userDataManager, ILogger<PlaylistGenerationTask> logManager) : IScheduledTask
 {
-    private readonly ILibraryManager _libraryManager;
-    private readonly ILogger<PlaylistGenerationTask> _logger;
-    private readonly PluginConfiguration _config;
+    private readonly ILibraryManager _libraryManager = libraryManager;
+    private readonly ILogger<PlaylistGenerationTask> _logger = logManager;
+    private readonly PluginConfiguration _config = Plugin.Instance!.Configuration;
+    private readonly IUserManager _userManager = userManager;
+    private readonly IUserDataManager _userDataManager = userDataManager;
 
-    public PlaylistGenerationTask(ILibraryManager libraryManager, ILogger<PlaylistGenerationTask> logManager)
-    {
-        _libraryManager = libraryManager;
-        _logger = logManager;
-        _config = Plugin.Instance!.Configuration;
-    }
 
     public string Name => "Generate personal playlist";
     public string Key => "PlaylistGenerationTask";
@@ -72,7 +73,6 @@ public class PlaylistGenerationTask : IScheduledTask
         _logger.LogInformation("Start generating playlist");
 
         var songList = new List<ScoredSong>();
-
         var query = new InternalItemsQuery
         {
             IncludeItemTypes = [BaseItemKind.Audio]
@@ -87,12 +87,20 @@ public class PlaylistGenerationTask : IScheduledTask
         }
 
         _logger.LogInformation($"Found {songs.Count} songs");
+        
+        var currentUser = _userManager.GetUserByName(_config.PlaylistUserName);
+
+        if (currentUser == null)
+        {
+            _logger.LogWarning($"User: {_config.PlaylistUserName} not found. Aborting.");
+            return Task.CompletedTask;
+        }
 
         foreach (var song in songs)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            songList.Add(new ScoredSong(song, _config.PlaylistUser));
+            songList.Add(new ScoredSong(song, currentUser, _userDataManager));
         }
 
         List<ScoredSong> sortedSongs = songList.OrderByDescending(song => song.Score).ToList();
@@ -122,12 +130,16 @@ public class PlaylistGenerationTask : IScheduledTask
 
 public class ScoredSong : BaseItem
 {
+    private readonly IUserDataManager _userDataManager;
     public BaseItem Song { get; set; }
-    public string User { get; set; }
+    public User User { get; set; }
     public double Score { get; set; }
 
-    public ScoredSong(BaseItem song, string user)
+    
+
+    public ScoredSong(BaseItem song, User user, IUserDataManager userDataManager)
     {
+        _userDataManager = userDataManager;
         Song = song;
         User = user;
         Score = CalculateScore();
