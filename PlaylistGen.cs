@@ -9,6 +9,9 @@ using MediaBrowser.Model.Serialization;
 using Microsoft.Extensions.Logging;
 using MediaBrowser.Model.Tasks;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Entities;
+using MediaBrowser.Controller.Entities;
+using Jellyfin.Data.Enums;
 
 namespace PlaylistGenerator;
 
@@ -44,41 +47,61 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 }
 
 
-public class LibraryListingTask : IScheduledTask
+public class PlaylistGenerationTask : IScheduledTask
 {
     private readonly ILibraryManager _libraryManager;
-    private readonly ILogger<LibraryListingTask> _logger;
+    private readonly ILogger<PlaylistGenerationTask> _logger;
     private readonly PluginConfiguration _config;
 
-    public LibraryListingTask(ILibraryManager libraryManager, ILogger<LibraryListingTask> logManager)
+    public PlaylistGenerationTask(ILibraryManager libraryManager, ILogger<PlaylistGenerationTask> logManager)
     {
         _libraryManager = libraryManager;
         _logger = logManager;
         _config = Plugin.Instance!.Configuration;
     }
 
-    public string Name => "List Libraries and Config";
-    public string Key => "LibraryListingTask";
-    public string Description => "Lists all libraries and current configuration values.";
+    public string Name => "Generate personal playlist";
+    public string Key => "PlaylistGenerationTask";
+    public string Description => "Generate a library based on previous listen data + similarity.";
     public string Category => "Library";
 
     public Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
     {
-     
-        _logger.LogInformation("LibraryListingTask started.");
+        cancellationToken.ThrowIfCancellationRequested(); 
 
-        var libraries = _libraryManager.GetVirtualFolders();
-        bool hasMusicLibrary = libraries.Any(library => library.CollectionType == MediaBrowser.Model.Entities.CollectionTypeOptions.music);
+        _logger.LogInformation("Start generating playlist");
 
-        if (hasMusicLibrary != true)
+        var songList = new List<ScoredSong>();
+
+        var query = new InternalItemsQuery
         {
-            _logger.LogWarning("No music library found. Aborting");
+            IncludeItemTypes = [BaseItemKind.Audio]
+        };
+        
+        var songs = _libraryManager.GetItemList(query);
+
+        if (songs.Count <= 0)
+        {
+            _logger.LogWarning("No music found.");
             return Task.CompletedTask;
         }
 
-        _logger.LogInformation("Now doing cool stuff");
+        _logger.LogInformation($"Found {songs.Count} songs");
 
-        _logger.LogInformation("LibraryListingTask finished.");
+        foreach (var song in songs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            songList.Add(new ScoredSong(song, _config.PlaylistUser));
+        }
+
+        List<ScoredSong> sortedSongs = songList.OrderByDescending(song => song.Score).ToList();
+        foreach (var scoredSong in sortedSongs.Take(5))
+        {
+            _logger.LogInformation($"{scoredSong.Song.Name} - Score: {scoredSong.Score}");
+        }
+
+        _logger.LogInformation("Generated playlist.");
         return Task.CompletedTask;
     }
 
@@ -93,5 +116,25 @@ public class LibraryListingTask : IScheduledTask
                 TimeOfDayTicks = TimeSpan.FromHours(0).Ticks
             }
         };
+    }
+}
+
+
+public class ScoredSong : BaseItem
+{
+    public BaseItem Song { get; set; }
+    public string User { get; set; }
+    public double Score { get; set; }
+
+    public ScoredSong(BaseItem song, string user)
+    {
+        Song = song;
+        User = user;
+        Score = CalculateScore();
+    }
+
+    private double CalculateScore()
+    {
+        return new Random().NextDouble();
     }
 }
