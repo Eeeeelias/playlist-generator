@@ -78,7 +78,8 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
         cancellationToken.ThrowIfCancellationRequested(); 
 
         _logger.LogInformation("Start generating playlist");
-
+        
+        // first get all songs
         var songList = new List<ScoredSong>();
         var SongQuery = new InternalItemsQuery{IncludeItemTypes = [BaseItemKind.Audio]};
         
@@ -92,6 +93,7 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
 
         _logger.LogInformation($"Found {songs.Count} songs");
         
+        // get user to identify listen data
         User? currentUser = _userManager.GetUserByName(_config.PlaylistUserName);
 
         if (currentUser == null)
@@ -107,14 +109,13 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
             songList.Add(new ScoredSong(song, currentUser, _userDataManager));
         }
 
-        List<ScoredSong> sortedSongs = songList.OrderByDescending(song => song.Score).ToList();
-        foreach (var scoredSong in sortedSongs.Take(5))
-        {
-            _logger.LogInformation($"{scoredSong.Song.Name} - Score: {scoredSong.Score}");
-        }
+        // assemble the playlist
+        PlaylistService playlistServer = new(_playlistManager, _libraryManager);
+        List<ScoredSong> sortedSongs = [.. songList.OrderByDescending(song => song.Score)];
+        var assembledPlaylist = PlaylistService.AssemblePlaylist(sortedSongs, _config.PlaylistDuration);
+            
 
         // check if playlist exists
-        PlaylistService playlistServer = new(_playlistManager, _libraryManager);
         var allPlaylists = _libraryManager.GetItemList(new InternalItemsQuery{IncludeItemTypes = [BaseItemKind.Playlist]});
 
         if (allPlaylists.Any(playlist => playlist.Name.Equals(_config.PlaylistName))) 
@@ -124,7 +125,7 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
         }
 
         // make the playlist
-        playlistServer.CreatePlaylist(_config.PlaylistName, currentUser, sortedSongs[0..20]);
+        playlistServer.CreatePlaylist(_config.PlaylistName, currentUser, assembledPlaylist);
 
         _logger.LogInformation("Generated playlist.");
         return Task.CompletedTask;
@@ -145,6 +146,7 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
 }
 
 
+// class for giving a song a score based on the user
 public class ScoredSong : BaseItem
 {
     private readonly IUserDataManager _userDataManager;
@@ -167,8 +169,8 @@ public class ScoredSong : BaseItem
         Score = new Random().NextDouble();
         if (userData.IsFavorite)
         {
-            Console.WriteLine($"Likes: {userData.Likes}\nPlayCount: {userData.PlayCount
-            }\nLast Played:{userData.LastPlayedDate}\nFavorite:{userData.IsFavorite}");
+            Console.WriteLine($"Name:{Song.Name} \nLikes: {userData.Likes}\nPlayCount: {userData.PlayCount
+            }\nLast Played:{userData.LastPlayedDate}\nFavorite: {userData.IsFavorite}\nTicks: {Song.RunTimeTicks}");
             Score++;
         }
         return Score;
@@ -176,6 +178,20 @@ public class ScoredSong : BaseItem
 }
 
 
+public class Recommender
+{
+    private readonly double _explorationCoefficient;
+
+    public Recommender(double explorationCoefficient)
+    {
+        _explorationCoefficient = explorationCoefficient;
+    }
+
+
+}
+
+
+// Service to create and delete playlists
 public class PlaylistService
 {
     private readonly IPlaylistManager _playlistManager;
@@ -185,6 +201,35 @@ public class PlaylistService
     {
         _playlistManager = playlistManager;
         _libraryManager = libraryManager;
+    }
+
+    public static List<ScoredSong> AssemblePlaylist(List<ScoredSong> songs, int maxLength)
+    {
+        int maxLengthSeconds = maxLength * 60;
+        int totalSeconds = 0;
+        int i = 0;
+        List<ScoredSong> assembledPlaylist = [];
+        while (totalSeconds < maxLengthSeconds && i < songs.Count)
+        {   
+            if (songs[i].Song.RunTimeTicks == null)
+            {
+                i++;
+                continue;
+            }
+
+            assembledPlaylist.Add(songs[i]);
+            totalSeconds += (int)((long)songs[i].Song.RunTimeTicks / 10_000_000);
+            i++;
+        }
+        if (totalSeconds > maxLengthSeconds)
+        {
+            Console.WriteLine($"Stopped because of tick length: {totalSeconds} vs {maxLengthSeconds}");
+        }
+        else
+        {
+            Console.WriteLine("Stopped because of song count");
+        }
+        return assembledPlaylist;
     }
 
     public void CreatePlaylist(string playlistName, User user, List<ScoredSong> items)
@@ -198,18 +243,6 @@ public class PlaylistService
             MediaType = MediaType.Audio,
             UserId = user.Id
         };
-        try 
-        {
-            Console.WriteLine(request.ItemIdList[0]);
-            Console.WriteLine(request.ItemIdList[1]);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            Console.WriteLine($"Playlist not long enough. Songs: {items.Count}");
-        }
-
-
         var playlist = _playlistManager.CreatePlaylist(request);
     }
 
@@ -226,7 +259,7 @@ public class PlaylistService
         if (playlist != null)
         {
             // Delete the playlist
-            var options = new DeleteOptions();
+            var options = new DeleteOptions{DeleteFileLocation = true};
             _libraryManager.DeleteItem(playlist, options);
         }
     }

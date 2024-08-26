@@ -13,7 +13,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public PluginConfiguration()
     {
         PlaylistName = "My Personal Mix";
-        PlaylistDuration = 600;
+        PlaylistDuration = 360;
         PlaylistUserName = "elias";
     }
 
