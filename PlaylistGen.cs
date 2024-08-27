@@ -20,7 +20,10 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     private ILogger<Plugin> _logger;
 
-    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ILogger<Plugin> logger)
+    public Plugin(
+        IApplicationPaths applicationPaths, 
+        IXmlSerializer xmlSerializer, 
+        ILogger<Plugin> logger)
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
@@ -70,7 +73,7 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
     {
         cancellationToken.ThrowIfCancellationRequested(); 
 
-        _logger.LogInformation("Start generating playlist");
+        _logger.LogInformation($"Start generating playlist with Exploration {_config.ExplorationCoefficient} for {_config.PlaylistUserName}");
         
         // first get all songs
         var songList = new List<ScoredSong>();
@@ -102,7 +105,7 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
             songList.Add(new ScoredSong(song, currentUser, _userDataManager));
         }
 
-        // initialise the Recommenders and get some recommendations based on our top songs
+        // initialise the Recommenders and get some recommendations based on our top
         PlaylistService playlistServer = new(_playlistManager, _libraryManager);
         Recommender playlistRecommender = new(_libraryManager, _userDataManager, _config.ExplorationCoefficient);
 
@@ -115,8 +118,8 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
         allSongs.AddRange(similarByGenre);
 
         _logger.LogInformation($"Highest score: {allSongs[0].Score} for song: {allSongs[0].Song.Name}");
-        var assembledPlaylist = PlaylistService.AssemblePlaylist(allSongs, _config.PlaylistDuration);
-            
+        List<ScoredSong> assembledPlaylist = PlaylistService.AssemblePlaylist(allSongs, _config.PlaylistDuration, playlistRecommender, currentUser);
+        PlaylistService.GentleShuffle(assembledPlaylist, 5);
 
         // check if playlist exists
         var allPlaylists = _libraryManager.GetItemList(new InternalItemsQuery{IncludeItemTypes = [BaseItemKind.Playlist]});

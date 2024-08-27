@@ -14,7 +14,7 @@ public class PluginConfiguration : BasePluginConfiguration
     {
         PlaylistName = "My Personal Mix";
         PlaylistDuration = 360;
-        PlaylistUserName = "elias";
+        PlaylistUserName = "username";
         ExplorationCoefficient = 3;
     }
 

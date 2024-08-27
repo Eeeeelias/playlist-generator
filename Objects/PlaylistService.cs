@@ -5,6 +5,7 @@ using MediaBrowser.Controller.Playlists;
 
 using Jellyfin.Data.Entities;
 using Jellyfin.Data.Enums;
+using System.Collections;
 
 namespace PlaylistGenerator.Objects;
 
@@ -14,7 +15,7 @@ public class PlaylistService(IPlaylistManager playlistManager, ILibraryManager l
     private readonly IPlaylistManager _playlistManager = playlistManager;
     private readonly ILibraryManager _libraryManager = libraryManager;
 
-    public static List<ScoredSong> AssemblePlaylist(List<ScoredSong> songs, int maxLength)
+    public static List<ScoredSong> AssemblePlaylist(List<ScoredSong> songs, int maxLength, Recommender recommender, User user)
     {
         int maxLengthSeconds = maxLength * 60;
         int totalSeconds = 0;
@@ -37,13 +38,46 @@ public class PlaylistService(IPlaylistManager playlistManager, ILibraryManager l
         }
         if (totalSeconds > maxLengthSeconds)
         {
-            Console.WriteLine($"Stopped because of tick length: {totalSeconds} vs {maxLengthSeconds}");
+            Console.WriteLine($"Stopped because of time length: {totalSeconds} vs {maxLengthSeconds}");
         }
         else
         {
-            Console.WriteLine("Stopped because of song count");
+            // if we run out of recommendations we just fill it up with songs similar to the ones we already have in the playlist
+            while (totalSeconds < maxLengthSeconds)
+            {
+                List<ScoredSong> randomFiller = recommender.RecommendSimilar([assembledPlaylist[new Random().Next(0, assembledPlaylist.Count)]], user);
+                foreach (ScoredSong filler in randomFiller)
+                {
+                    if (seenGuids.Contains(filler.Song.Id))
+                    {
+                        continue;
+                    }
+
+                    assembledPlaylist.Add(filler);
+                    totalSeconds += (int)((long)(filler.Song.RunTimeTicks ?? 0) / 10_000_000);
+                    seenGuids.Add(filler.Song.Id);
+                }
+            }
         }
         return assembledPlaylist;
+    }
+
+    public static void GentleShuffle<T>(List<T> array, int k)
+    {
+        Random random = new();
+
+        for (int i = 0; i < array.Count; i++)
+        {
+            // Determine the range within k positions where the swap can happen
+            int start = Math.Max(0, i - k);
+            int end = Math.Min(array.Count - 1, i + k);
+
+            // Choose a random index within the range to swap with
+            int swapIndex = random.Next(start, end + 1);
+
+            // Swap the elements
+            (array[swapIndex], array[i]) = (array[i], array[swapIndex]);
+        }
     }
 
     public void CreatePlaylist(string playlistName, User user, List<ScoredSong> items)

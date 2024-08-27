@@ -4,9 +4,6 @@ using MediaBrowser.Controller.Entities;
 using Jellyfin.Data.Entities;
 
 using Jellyfin.Data.Enums;
-using System.Net.Http.Headers;
-using System.Reflection.Metadata.Ecma335;
-using System.ComponentModel.DataAnnotations;
 
 namespace PlaylistGenerator.Objects;
 
@@ -94,9 +91,9 @@ public class Recommender(ILibraryManager libraryManager, IUserDataManager userDa
         filteredSongs = _explorationCoefficient switch
         {
             1 => potentialSongs.Where(song => song.Score > maxScore / 2).ToList(),
-            2 => potentialSongs.Where(song => song.Score > maxScore / 4).ToList(),
+            2 => potentialSongs.Where(song => song.Score > Math.Min(maxScore, 0.2) / 4).ToList(),
             3 => potentialSongs,
-            4 => potentialSongs.Where(song => song.Score < minScore * 4).ToList(),
+            4 => potentialSongs.Where(song => song.Score < Math.Max(minScore, 0.2) * 4).ToList(),
             5 => potentialSongs.Where(song => song.Score < minScore * 2).ToList(),
             _ => potentialSongs,
         };
