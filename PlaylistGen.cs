@@ -19,6 +19,7 @@ using Jellyfin.Data.Entities;
 using Jellyfin.Data.Enums;
 using MediaBrowser.Controller.Playlists;
 using MediaBrowser.Controller.Providers;
+using J2N;
 
 namespace PlaylistGenerator;
 
@@ -163,17 +164,37 @@ public class ScoredSong : BaseItem
         Score = CalculateScore();
     }
 
-    private double CalculateScore()
+    private double CalculateScore(double decayRate = 0.5, List<double>? weights = null, int minPlayThreshold = 3)
     {
+        weights ??= [0.4, 0.35, 0.25];
         var userData = _userDataManager.GetUserData(User.Id, Song);
-        Score = new Random().NextDouble();
+
+        // songs that the user barely knows (below the minPlayThreshold) should get a score of zero
+        if (userData.PlayCount < minPlayThreshold)
+        {
+            return 0.0;
+        }
+
+        // information about if the user likes this song
+        int favourite = 0;
         if (userData.IsFavorite)
         {
-            Console.WriteLine($"Name:{Song.Name} \nLikes: {userData.Likes}\nPlayCount: {userData.PlayCount
-            }\nLast Played:{userData.LastPlayedDate}\nFavorite: {userData.IsFavorite}\nTicks: {Song.RunTimeTicks}");
-            Score++;
+            favourite = 1;
         }
-        return Score;
+
+        // how long it's been since they last listened to it
+        double recency = 0;
+        if (userData.LastPlayedDate != null)
+        {
+            TimeSpan timeSpan = (TimeSpan)(userData.LastPlayedDate - DateTime.Now);
+            int daysSinceLastPlayed = timeSpan.Days;
+            recency = 1 / (1 + Math.Exp(decayRate * daysSinceLastPlayed));
+        }
+        
+        // songs that have been listened to a lot may not be super wanted anymore
+        double highPlayDecay = 1 / 1+ Math.Log(1+userData.PlayCount, 2); 
+        
+        return weights[0] * favourite + weights[1] * recency + weights[2] * highPlayDecay;
     }
 }
 
@@ -216,9 +237,8 @@ public class PlaylistService
                 i++;
                 continue;
             }
-
             assembledPlaylist.Add(songs[i]);
-            totalSeconds += (int)((long)songs[i].Song.RunTimeTicks / 10_000_000);
+            totalSeconds += (int)((long)(songs[i].Song.RunTimeTicks ?? 0) / 10_000_000);
             i++;
         }
         if (totalSeconds > maxLengthSeconds)
