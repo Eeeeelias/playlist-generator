@@ -106,10 +106,14 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
         PlaylistService playlistServer = new(_playlistManager, _libraryManager);
         Recommender playlistRecommender = new(_libraryManager, _userDataManager, 5);
         List<ScoredSong> topSongs = [.. songList.OrderByDescending(song => song.Score).Take(20)];
-        List<ScoredSong> similarSongs = playlistRecommender.RecommendSimilar(topSongs, currentUser);
+        List<ScoredSong> similarBySong = playlistRecommender.RecommendSimilar(topSongs, currentUser);
+        List<ScoredSong> similarByGenre = playlistRecommender.RecommendByGenre(topSongs, currentUser);
 
         List<ScoredSong> allSongs = [..topSongs];
-        allSongs.AddRange(similarSongs);
+        allSongs.AddRange(similarBySong);
+        allSongs.AddRange(similarByGenre);
+
+        _logger.LogInformation($"Highest score: {allSongs[0].Score} for song: {allSongs[0].Song.Name}");
         var assembledPlaylist = PlaylistService.AssemblePlaylist(allSongs, _config.PlaylistDuration);
             
 
