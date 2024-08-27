@@ -53,7 +53,7 @@ public class ScoredSong : BaseItem
         }
         
         // songs that have been listened to a lot may not be super wanted anymore
-        double highPlayDecay = 1 / 1+ Math.Log(userData.PlayCount, 2); 
+        double highPlayDecay = 1 / 1+ Math.Log(-2 + userData.PlayCount, 2); 
 
         return weights[0] * favourite + weights[1] * recency + weights[2] * highPlayDecay;
     }

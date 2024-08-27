@@ -6,6 +6,7 @@ using Jellyfin.Data.Entities;
 using Jellyfin.Data.Enums;
 using System.Net.Http.Headers;
 using System.Reflection.Metadata.Ecma335;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlaylistGenerator.Objects;
 
@@ -38,10 +39,24 @@ public class Recommender(ILibraryManager libraryManager, IUserDataManager userDa
     public List<ScoredSong> RecommendByArtist(List<ScoredSong> songBasis, User user)
     {
         List<ScoredSong> Recommendations = [];
+        HashSet<Guid> allArtists = [];
         foreach (ScoredSong song in songBasis)
         {
+            // TODO: Add artists here
             break;
         }
+
+        var query = new InternalItemsQuery
+        {
+            ArtistIds = [.. allArtists],
+            Limit = 50,
+            IncludeItemTypes = [BaseItemKind.Audio]
+        };
+
+        var similarSongs = _libraryManager.GetItemList(query);
+        List<ScoredSong> potentialSongs = similarSongs.Select(song => new ScoredSong(song, user, _userDataManager)).ToList();
+        potentialSongs = FilterByExploration(potentialSongs);
+        Recommendations.AddRange(potentialSongs);
 
         return Recommendations;
     }
@@ -55,11 +70,6 @@ public class Recommender(ILibraryManager libraryManager, IUserDataManager userDa
             var genres = song.Song.Genres;
             allGenres.UnionWith(genres);
         }
-        // DEBUG stuff
-        foreach (string genre in allGenres)
-        {
-            Console.WriteLine(genre);
-        }
         
         var query = new InternalItemsQuery
         {
@@ -70,23 +80,26 @@ public class Recommender(ILibraryManager libraryManager, IUserDataManager userDa
 
         var similarSongs = _libraryManager.GetItemList(query);
         List<ScoredSong> potentialSongs = similarSongs.Select(song => new ScoredSong(song, user, _userDataManager)).ToList();
-        // Todo incorporate exploration coefficient to remove songs with too low of a score
-        switch (_explorationCoefficient)
-        {
-            case 0: potentialSongs = potentialSongs.Where(song => song.Score > 0).ToList(); break;
-            case 1: potentialSongs = potentialSongs.Where(song => song.Score > 0).ToList(); break;
-            case 2: potentialSongs = potentialSongs.Where(song => song.Score > 0).ToList(); break;
-            case 3: potentialSongs = potentialSongs.Where(song => song.Score > 0).ToList(); break;
-            case 4: potentialSongs = potentialSongs.Where(song => song.Score > 0).ToList(); break;
-            case 5: potentialSongs = potentialSongs.Where(song => song.Score < 0.5).ToList(); break;
-            default: break;
-        }
+        potentialSongs = FilterByExploration(potentialSongs);
 
-        if (_explorationCoefficient == 0)
-        {
-            potentialSongs = potentialSongs.Where(song => song.Score > 0).ToList();
-        }
         Recommendations.AddRange(potentialSongs);
         return Recommendations;
+    }
+
+    private List<ScoredSong> FilterByExploration(List<ScoredSong> potentialSongs)
+    {
+        List<ScoredSong> filteredSongs = [];
+        double minScore = potentialSongs.Min(song => song.Score);
+        double maxScore = potentialSongs.Max(song => song.Score);
+        filteredSongs = _explorationCoefficient switch
+        {
+            1 => potentialSongs.Where(song => song.Score > maxScore / 2).ToList(),
+            2 => potentialSongs.Where(song => song.Score > maxScore / 4).ToList(),
+            3 => potentialSongs,
+            4 => potentialSongs.Where(song => song.Score < minScore * 4).ToList(),
+            5 => potentialSongs.Where(song => song.Score < minScore * 2).ToList(),
+            _ => potentialSongs,
+        };
+        return filteredSongs;
     }
 }
