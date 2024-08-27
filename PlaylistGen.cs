@@ -125,7 +125,7 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
         // make the playlist
         playlistServer.CreatePlaylist(_config.PlaylistName, currentUser, assembledPlaylist);
 
-        _logger.LogInformation("Generated playlist.");
+        _logger.LogInformation($"Generated personal playlist for {currentUser.Username}.");
         return Task.CompletedTask;
     }
 

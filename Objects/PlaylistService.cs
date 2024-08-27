@@ -19,16 +19,20 @@ public class PlaylistService(IPlaylistManager playlistManager, ILibraryManager l
         int maxLengthSeconds = maxLength * 60;
         int totalSeconds = 0;
         int i = 0;
+        HashSet<Guid> seenGuids = []; 
         List<ScoredSong> assembledPlaylist = [];
         while (totalSeconds < maxLengthSeconds && i < songs.Count)
         {   
-            if (songs[i].Song.RunTimeTicks == null)
+            // make sure song is valid and is not already in the playlist
+            if (songs[i].Song.RunTimeTicks == null || seenGuids.Contains(songs[i].Song.Id))
             {
                 i++;
                 continue;
             }
+
             assembledPlaylist.Add(songs[i]);
             totalSeconds += (int)((long)(songs[i].Song.RunTimeTicks ?? 0) / 10_000_000);
+            seenGuids.Add(songs[i].Song.Id);
             i++;
         }
         if (totalSeconds > maxLengthSeconds)
