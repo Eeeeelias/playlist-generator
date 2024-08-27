@@ -15,6 +15,7 @@ public class PluginConfiguration : BasePluginConfiguration
         PlaylistName = "My Personal Mix";
         PlaylistDuration = 360;
         PlaylistUserName = "elias";
+        ExplorationCoefficient = 3;
     }
 
     public int PlaylistDuration { get; set; }
@@ -22,4 +23,6 @@ public class PluginConfiguration : BasePluginConfiguration
     public string PlaylistName { get; set; }
 
     public string PlaylistUserName { get; set; }
+
+    public double ExplorationCoefficient { get; set; }
 }

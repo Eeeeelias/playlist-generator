@@ -27,6 +27,17 @@
                         <input id="PlaylistUserName" name="PlaylistUserName" type="text" is="emby-input" />
                         <div class="fieldDescription">The name of the user that wants the playlist</div>
                     </div>
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="ExplorationCoefficient">Explortation Coefficient</label>
+                        <select is="emby-select" id="ExplorationCoefficient" name="ExplorationCoefficient" class="emby-select-withcolor emby-select">
+                            <option id="expCoef1" value="1">1 (Almost no new music)</option>
+                            <option id="expCoef2" value="2">2 (Very little new music)</option>
+                            <option id="expCoef3" value="3">3 (Balanced)</option>
+                            <option id="expCoef4" value="4">4 (More new music)</option>
+                            <option id="expCoef5" value="5">5 (Almost no known music)</option>
+                        </select>
+                        <div class="fieldDescription">How much the algorithm should favour exploring new music vs. recommending known music</div>
+                    </div>
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -47,6 +58,7 @@
                         document.querySelector('#PlaylistName').value = config.PlaylistName;
                         document.querySelector('#PlaylistDuration').value = config.PlaylistDuration;
                         document.querySelector('#PlaylistUserName').value = config.PlaylistUserName;
+                        document.querySelector('#ExplorationCoefficient').value = config.ExplorationCoefficient;
                         Dashboard.hideLoadingMsg();
                     });
                 });
@@ -58,6 +70,7 @@
                     config.PlaylistName = document.querySelector('#PlaylistName').value;
                     config.PlaylistDuration = document.querySelector('#PlaylistDuration').value;
                     config.PlaylistUserName = document.querySelector('#PlaylistUserName').value;
+                    config.ExplorationCoefficient = document.querySelector('#ExplorationCoefficient').value;
                     ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
                     });

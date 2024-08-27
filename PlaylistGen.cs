@@ -102,9 +102,10 @@ public class PlaylistGenerationTask(ILibraryManager libraryManager,
             songList.Add(new ScoredSong(song, currentUser, _userDataManager));
         }
 
-        // assemble the playlist
+        // initialise the Recommenders and get some recommendations based on our top songs
         PlaylistService playlistServer = new(_playlistManager, _libraryManager);
-        Recommender playlistRecommender = new(_libraryManager, _userDataManager, 5);
+        Recommender playlistRecommender = new(_libraryManager, _userDataManager, _config.ExplorationCoefficient);
+
         List<ScoredSong> topSongs = [.. songList.OrderByDescending(song => song.Score).Take(20)];
         List<ScoredSong> similarBySong = playlistRecommender.RecommendSimilar(topSongs, currentUser);
         List<ScoredSong> similarByGenre = playlistRecommender.RecommendByGenre(topSongs, currentUser);
