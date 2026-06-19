@@ -124,6 +124,8 @@ public class ScoredSong : BaseItem
         // I do this because jellyfin scrobble data is sometimes wildly overestimated.
         // Better to rely on what we actually observe.
         var observedPlayCount = GetTotalPlays(); 
+        if  (observedPlayCount == 0) return 0.0;
+        
         var frequency = GetNormalizedPlaysSevenDays();
 
         // how long it's been since they last listened to it
