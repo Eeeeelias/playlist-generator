@@ -13,8 +13,7 @@ public class Recommender(ILibraryManager libraryManager, IUserDataManager userDa
 {
     private List<BaseItem> TakeRandom(List<BaseItem> list, int n)
     {
-        if (n < 0)
-            throw new ArgumentOutOfRangeException(nameof(n));
+        if (n < 0) throw new ArgumentOutOfRangeException(nameof(n));
 
         n = Math.Min(n, list.Count);
 

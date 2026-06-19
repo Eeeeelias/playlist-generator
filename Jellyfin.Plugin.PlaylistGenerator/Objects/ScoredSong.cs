@@ -58,6 +58,27 @@ public class ScoredSong : BaseItem
         return (double)plays / MaxPlaysSevenDays;
     }
     
+    private int GetTotalPlays()
+    {
+        if (Song.Id == Guid.Empty || User.Id == Guid.Empty)
+        {
+            return 0;
+        }
+        var songLengthSeconds = Song.RunTimeTicks / TimeSpan.TicksPerSecond;
+        var sql = $"""
+                   SELECT PlayDuration FROM PlaybackActivity
+                   WHERE ItemId = '{Song.Id:N}' AND UserId = '{User.Id:N}'
+                   """;
+        var result = _activityDatabase.ExecuteQuery(sql);
+        var plays = 0;
+        foreach (var row in result)
+        {
+            plays += int.Parse(row["Column0"]) >= songLengthSeconds * 0.8 ? 1 : -1;
+        }
+        plays = Math.Max(plays, 0);
+        return plays;
+    }
+    
     // get artist id from album id
     private Guid GetAristId(BaseItem song)
     {
@@ -100,6 +121,9 @@ public class ScoredSong : BaseItem
             return 0.0;
         }
         
+        // I do this because jellyfin scrobble data is sometimes wildly overestimated.
+        // Better to rely on what we actually observe.
+        var observedPlayCount = GetTotalPlays(); 
         var frequency = GetNormalizedPlaysSevenDays();
 
         // how long it's been since they last listened to it
@@ -112,7 +136,7 @@ public class ScoredSong : BaseItem
         }
         
         // songs that have been listened to a lot may not be super wanted anymore
-        var highPlayDecay = 1 / (1 + Math.Log(1 + userData.PlayCount, 2));
+        var highPlayDecay = 1 / (1 + Math.Log(1 + observedPlayCount, 2));
         return weights[0] * frequency + weights[1] * recency + weights[2] * highPlayDecay;
     }
 }
