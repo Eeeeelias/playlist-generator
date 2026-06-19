@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Eeeeelias/playlist-generator/refs/heads/main/images/logo.png",
     "versions": [
       {
+        "version": "1.5.1.0",
+        "changelog": "Fix played counting",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Eeeeelias/playlist-generator/releases/download/v1.5.1.0/PlaylistGenerator_1.5.1.0.zip",
+        "checksum": "8156d04667739f69a65e43c37d25f5e1",
+        "timestamp": "2026-06-19T18:39:33Z"
+      },
+      {
         "version": "1.5.0.1",
         "changelog": "Fix crash when missing enough similar songs",
         "targetAbi": "10.11.0.0",
