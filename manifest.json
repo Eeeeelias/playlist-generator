@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Eeeeelias/playlist-generator/refs/heads/main/images/logo.png",
     "versions": [
       {
+        "version": "1.5.2.0",
+        "changelog": "Update to Jellyfin 12",
+        "targetAbi": "12.1",
+        "sourceUrl": "https://github.com/Eeeeelias/playlist-generator/releases/download/v1.5.2.0/PlaylistGenerator_1.5.2.0.zip",
+        "checksum": "627291f8b026304e70e808b6f81e9aeb",
+        "timestamp": "2026-10-03T08:46:41Z"
+      },
+      {
         "version": "1.5.1.0",
         "changelog": "Fix played counting",
         "targetAbi": "10.11.0.0",
